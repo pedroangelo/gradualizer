@@ -91,14 +91,6 @@ listParser = do
 	name3 <- spaces *> (atom <|> variable) <* spaces
 	char ']'
 	return $ List (name1, name2) name3
-{-
-listItemParser :: Parser Argument
-listItemParser = do
-	name1 <- spaces *> (atom <|> variable)
-	char ':'
-	name2 <- (atomParser <|> variableParser) <* spaces
-	return $ ListItem name1 name2
--}
 
 -- parse a predicate call inside the body or head of a clause
 -- <predicate> ::= <name>(<arguments>)
@@ -113,12 +105,11 @@ predicateParser = do
 	return $ Predicate name arguments
 
 -- a predicate call's argument can be:
--- a atom, list, atom, variable or a list item (X:T)
+-- a atom, list, atom or variable
 argumentsParser :: Parser Argument
 argumentsParser =
 	(try listParser) <|>
 	(try predicateParser) <|>
-	--(try listItemParser) <|>
 	(try atomParser) <|>
 	(try variableParser) <?> "arguments"
 
