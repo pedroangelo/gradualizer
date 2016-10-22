@@ -1,5 +1,9 @@
 module InitialTypeSystem where
 
+-- Prolog Parser
+import PrologParser
+
+-- Imports
 import Data.List
 import Data.Maybe
 
@@ -29,6 +33,8 @@ data TypingRelation = TypeAssignment Context Expression Type
 					| JoinRelation Type [Type]
 					-- Subtyping Relation: Type <: Type
 					| SubtypingRelation Type Type
+					-- Member Relation: (Name:Type) ∈ Context
+					-- | MemberRelation Bindings Bindings
 					deriving (Show, Eq, Ord)
 
 -- Context holds bindings between variables and types
@@ -122,6 +128,7 @@ printRelation (StaticRelation type1) = "static(" ++ printType type1 ++ ")"
 printRelation (JoinRelation typeJ types) =
 	printType typeJ ++ " = " ++ concat (intersperse " ⊔ " (map printType types))
 printRelation (SubtypingRelation type1 type2) = printType type1 ++ " <: " ++ printType type2
+--printRelation (MemberRelation element set) = printContext [element] ++ " ∈ " ++ printContext [set]
 
 printRule :: TypeRule -> String
 printRule (TypeRule premise conclusion) =
@@ -133,6 +140,73 @@ printSystem' (TypeSystem ts) = concat $ intersperse "\n\n" $ map printRule ts
 
 printSystem ts = putStrLn $ printSystem' ts
 
+
+-- PROLOG CONVERSION
+
+-- Convert from prolog to typesystem
+
+toTypeSystem :: Program -> [String] -> TypeSystem
+toTypeSystem (Program _ program) functions =
+	TypeSystem $ map (\x -> toTypeRule x functions) program
+
+toTypeRule :: Clause -> [String] -> TypeRule
+toTypeRule (Fact head_) functions =
+	TypeRule [] (toTypingRelation head_ functions)
+toTypeRule (Rule head_ body) functions =
+	TypeRule
+		(map (\x -> toTypingRelation x functions) body)
+		(toTypingRelation head_ functions)
+
+toTypingRelation :: Structure -> [String] -> TypingRelation
+toTypingRelation (Structure "type" arguments) functions = toTypeAssignment arguments functions
+--toTypingRelation (Structure "member" arguments) functions = toMember arguments
+-- add for more typing relations
+
+--toMember :: [Argument] -> TypingRelation
+--toMember ((ListItem var typ):ctx:_) =
+--	MemberRelation (Binding var (toType typ)) (head $ toContext ctx)
+
+toTypeAssignment :: [Argument] -> [String] -> TypingRelation
+toTypeAssignment (context:expression:type_:[]) functions =
+	TypeAssignment (toContext context) (toExpression expression functions) (toType type_)
+
+toContext :: Argument -> Context
+toContext (Atom name) = undefined
+toContext (Variable "Context") = [Context "Γ"]
+toContext (Variable name) = undefined
+toContext (List (var, type_) "Context") =
+	[Context "Γ", Binding var (VarType type_ "" NullMode NullPosition)]
+toContext (List (var, type_) tail_) =
+	[Context tail_, Binding var (VarType type_ "" NullMode NullPosition)]
+toContext (Predicate name args) = undefined
+
+toExpression :: Argument -> [String] -> Expression
+toExpression (Atom name) _ = Function name Nothing []
+toExpression (Variable name) _ = Var name
+toExpression (List (var, type_) tail_) _ = undefined
+toExpression (Predicate "var" ((Variable name):[])) _ = Var name
+toExpression (Predicate "abs" ((Variable var) : expr : [])) functions =
+	Abstraction var (toExpression expr functions)
+toExpression (Predicate "app" (expr1:expr2:[])) functions =
+	Application (toExpression expr1 functions) (toExpression expr2 functions)
+toExpression (Predicate name args) functions
+	| elem name functions =
+		let
+			typeAnnotation = head args
+			args' = tail args
+		in Function name (Just $ toType typeAnnotation) (map (\x -> toExpression x functions) args')
+	| otherwise = Function name Nothing (map (\x -> toExpression x functions) args)
+
+toType :: Argument -> Type
+toType (Atom name) = BaseType name NullMode NullPosition
+toType (Variable name) = VarType name "" NullMode NullPosition
+toType (List (var, type_) tail_) = undefined
+toType (Predicate "arrow" (type1:type2:[])) = ArrowType (toType type1) (toType type2)
+toType (Predicate "list" (type_:[])) = ListType (toType type_)
+toType (Predicate "pairType" (type1:type2:[])) = PairType (toType type1) (toType type2)
+toType (Predicate "refType" (type_:[])) = RefType (toType type_)
+toType (Predicate "sumType" (type1:type2:[])) = SumType (toType type1) (toType type2)
+toType (Predicate name args) = TypeConstructor name (map toType args)
 -- HELPER FUNCTIONS
 
 -- switch position marking

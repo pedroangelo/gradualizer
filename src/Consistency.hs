@@ -2,11 +2,12 @@ module Consistency (
 	removeFlowsInsertConsistency
 ) where
 
+-- Type System
 import InitialTypeSystem
 
--- TODO:
-
 -- Step 6: Remove flows to join types and replace remaining flows with consistency checks
+
+-- TODO:
 
 -- Apply step 6 to a type system
 removeFlowsInsertConsistency :: TypeSystem -> TypeSystem

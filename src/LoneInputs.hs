@@ -2,15 +2,18 @@ module LoneInputs (
 	loneInputsStatic
 ) where
 
+-- Type System
 import InitialTypeSystem
+
+-- Imports
 import Control.Monad.State
 import Data.List
 import Data.Maybe
 
--- TODO:
-
 -- Step 5: Collect all type variables that only appear in input position
 -- and add a Static typing relation for each
+
+-- TODO:
 
 -- Apply step 5 to a type system
 loneInputsStatic :: TypeSystem -> TypeSystem

@@ -2,19 +2,21 @@ module Flows (
 	insertFlowsFinalType
 ) where
 
+-- Type System
 import InitialTypeSystem
+
+-- Imports
 import Control.Monad.State
 import Data.Maybe
+
+-- Step 4: Replace repeating output type variables with fresh variables,
+-- find final type, mark each producer flowing to consumer through
+-- the final type, and finally replace each input with the final type
 
 -- TODO:
 -- - collect repeating variables for diferent typing relations (step4_1TypingRelation)
 -- - change names of variables and collect final type information on other typing relations (step4_2TypingRelation)
 -- - replace input variable with final types for other typing relations (replaceInputVariable)
-
-
--- Step 4: Replace repeating output type variables with fresh variables,
--- find final type, mark each producer flowing to consumer through
--- the final type, and finally replace each input with the final type
 
 -- Apply step 4 to a type system
 insertFlowsFinalType :: TypeSystem -> TypeSystem

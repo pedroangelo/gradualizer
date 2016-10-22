@@ -2,16 +2,19 @@ module PatternMatch (
 	applyPatternMatching
 ) where
 
+-- Type System
 import InitialTypeSystem
+
+-- Imports
 import Control.Monad.State
+
+-- Step 3: Replace constructed outputs with fresh type variables
+-- and pattern match these variables with the constructed outputs
 
 -- TODO:
 -- - check if pattern match is only needed in premises
 -- - consider the case that typing relations can be others
 -- aside from type assignment or matching relation (step3Premises)
-
--- Step 3: Replace constructed outputs with fresh type variables
--- and pattern match these variables with the constructed outputs
 
 -- apply pattern match to type system
 applyPatternMatching :: TypeSystem -> TypeSystem

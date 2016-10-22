@@ -2,14 +2,17 @@ module Classify (
 	classifyTypeVariables
 ) where
 
+-- Type System
 import InitialTypeSystem
-import Data.Maybe
 
--- TODO:
--- - check if type constructor is covariant or contravariant
+-- Imports
+import Data.Maybe
 
 -- Step 1: Classify type variables with input or output modes
 -- Step 2: Classsify type variables with producer or consumer positions
+
+-- TODO:
+-- - check if type constructor is covariant or contravariant
 
 -- classify type system
 classifyTypeVariables :: TypeSystem -> TypeSystem
@@ -18,7 +21,6 @@ classifyTypeVariables (TypeSystem typerules) = TypeSystem $ map step12TypeRule t
 -- classify type rule
 step12TypeRule :: TypeRule -> TypeRule
 step12TypeRule (TypeRule premises conclusion) = TypeRule (map step12Premise premises) (step12Conclusion conclusion)
-
 
 -- classify premise, modes and positions are not flipped
 step12Premise :: TypingRelation -> TypingRelation

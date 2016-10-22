@@ -1,29 +1,57 @@
-module Gradualizer where
+module Gradualizer (
+	readSystem,
+	gradualize
+) where
 
+-- Type Systems
 import InitialTypeSystem as ITS
 import GradualTypeSystem as GTS
+
+-- Prolog Parser
 import PrologParser
+
+-- Gradulizer Steps
 import Classify
 import PatternMatch
 import Flows
 import LoneInputs
 import Consistency
 
+-- Imports
 import Data.Maybe
 
-
+-- read type system from prolog file,
+-- parse contents and convert to TypeSystem,
+-- then gradualize
 readSystem :: FilePath -> IO GTS.TypeSystem
 readSystem file = do
-	ts <- prologToTypeSystem file
-	return $ gradualize $ ts
+	signatures <- readFile ("Type Systems in Prolog/" ++ file ++ ".sig")
+	let functions = lines signatures
+	prolog <- parseProlog file
+	let ts = ITS.toTypeSystem prolog functions
+	return $ gradualize ts
 
+-- gradualize type system by applying 6 steps:
+-- - Step 1: Classify type variables with input or output modes
+-- - Step 2: Classify type variables with producer or consumer positions
+-- - Step 3: Apply pattern matching to constructed outputs
+-- - Step 4: Flow and final type discovery
+-- - Step 5: Restrict lone inputs to be static
+-- - Step 6: Replace flow with consistency
+-- - Final: Remove mode and position from type variables and flow relation from typing relation
 gradualize :: ITS.TypeSystem -> GTS.TypeSystem
 gradualize =
+	-- final
 	convertTypeSystem .
+	-- step 6
 	removeFlowsInsertConsistency .
+	-- step 5
 	loneInputsStatic .
+	-- step 4
 	insertFlowsFinalType .
+	-- step 3
 	applyPatternMatching .
+	-- step 1 and 2
 	classifyTypeVariables
 
 -- CONVERTION TO GRADUAL TYPE SYSTEM
