@@ -47,6 +47,10 @@ step3Premises ((MatchingRelation var typ) : premises) = do
 	-- pattern match over the rest of the premises
 	premises' <- step3Premises premises
 	return $ [(MatchingRelation var pmtype)] ++ pmpremises ++ premises
+-- do not classify variables in member relation
+step3Premises ((MemberRelation elem1 elem2) : premises) = do
+	premises' <- step3Premises premises
+	return $ (MemberRelation elem1 elem2) : premises'
 -- if not typing relation or matching relation
 step3Premises _ = return []
 

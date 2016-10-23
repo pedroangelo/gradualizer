@@ -19,23 +19,24 @@ type Premises = [TypingRelation]
 type Conclusion = TypingRelation
 
 -- Typing relation can be:
--- 		Type Assignment: (Context, Expression, Type)
-data TypingRelation = TypeAssignment Context Expression Type
-					-- Pattern Matching: Type ▷ Type
-					| MatchingRelation Type Type
-					-- Flow Relation: Type ⇝ Type
-					| FlowRelation Type Type
-					-- Consistency Relation : Type ~ Type
-					| ConsistencyRelation Type Type
-					-- Static Relation: static(Type)
-					| StaticRelation Type
-					-- Join Relation: Type = ⊔ [Type]
-					| JoinRelation Type [Type]
-					-- Subtyping Relation: Type <: Type
-					| SubtypingRelation Type Type
-					-- Member Relation: (Name:Type) ∈ Context
-					-- | MemberRelation Bindings Bindings
-					deriving (Show, Eq, Ord)
+data TypingRelation
+	-- Type Assignment: (Context, Expression, Type)
+	= TypeAssignment Context Expression Type
+	-- Pattern Matching: Type ▷ Type
+	| MatchingRelation Type Type
+	-- Flow Relation: Type ⇝ Type
+	| FlowRelation Type Type
+	-- Consistency Relation : Type ~ Type
+	| ConsistencyRelation Type Type
+	-- Static Relation: static(Type)
+	| StaticRelation Type
+	-- Join Relation: Type = ⊔ [Type]
+	| JoinRelation Type [Type]
+	-- Subtyping Relation: Type <: Type
+	| SubtypingRelation Type Type
+	-- Member Relation: (Name:Type) ∈ Context
+	| MemberRelation Bindings Bindings
+	deriving (Show, Eq, Ord)
 
 -- Context holds bindings between variables and types
 type Context = [Bindings]
@@ -88,6 +89,10 @@ printContext [] = ""
 printContext ((Context var) : ctx) = var ++ "" ++ printContext ctx
 printContext ((Binding var typ) : ctx) = ", " ++ var ++ " : " ++ printType typ ++ printContext ctx
 
+printBindings :: Bindings -> String
+printBindings(Context var) = var
+printBindings (Binding var typ) = var ++ " : " ++ printType typ
+
 printType :: Type -> String
 printType (BaseType basetype mode position) = basetype ++ printMode mode ++ printPosition position
 printType (VarType name ident mode position) = name ++ "_" ++ ident ++ printMode mode ++ printPosition position
@@ -120,7 +125,9 @@ printExpression (Function name annotation exps) = name ++
 
 printRelation :: TypingRelation -> String
 printRelation (TypeAssignment ctx expr typ) =
-	printContext ctx ++ " ⊢ " ++ printExpression expr ++ " : " ++ printType typ
+	--printContext ctx ++ " ⊢ " ++ printExpression expr ++ " : " ++ printType typ
+	(concat $ intersperse ", " $ map printBindings ctx)
+	++ " ⊢ " ++ printExpression expr ++ " : " ++ printType typ
 printRelation (MatchingRelation type1 type2) = printType type1 ++ " ▷ " ++ printType type2
 printRelation (FlowRelation type1 type2) = printType type1 ++ " ⇝ " ++ printType type2
 printRelation (ConsistencyRelation type1 type2) = printType type1 ++ " ~ " ++ printType type2
@@ -128,7 +135,7 @@ printRelation (StaticRelation type1) = "static(" ++ printType type1 ++ ")"
 printRelation (JoinRelation typeJ types) =
 	printType typeJ ++ " = " ++ concat (intersperse " ⊔ " (map printType types))
 printRelation (SubtypingRelation type1 type2) = printType type1 ++ " <: " ++ printType type2
---printRelation (MemberRelation element set) = printContext [element] ++ " ∈ " ++ printContext [set]
+printRelation (MemberRelation element set) = printBindings element ++ " ∈ " ++ printBindings set
 
 printRule :: TypeRule -> String
 printRule (TypeRule premise conclusion) =
@@ -159,12 +166,12 @@ toTypeRule (Rule head_ body) functions =
 
 toTypingRelation :: Structure -> [String] -> TypingRelation
 toTypingRelation (Structure "type" arguments) functions = toTypeAssignment arguments functions
---toTypingRelation (Structure "member" arguments) functions = toMember arguments
+toTypingRelation (Structure "member" arguments) functions = toMember arguments
 -- add for more typing relations
 
---toMember :: [Argument] -> TypingRelation
---toMember ((ListItem var typ):ctx:_) =
---	MemberRelation (Binding var (toType typ)) (head $ toContext ctx)
+toMember :: [Argument] -> TypingRelation
+toMember ((Bind var typ):ctx:_) =
+	MemberRelation (Binding var (toType $ Variable typ)) (head $ toContext ctx)
 
 toTypeAssignment :: [Argument] -> [String] -> TypingRelation
 toTypeAssignment (context:expression:type_:[]) functions =

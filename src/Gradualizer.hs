@@ -84,6 +84,9 @@ convertRelation ((ITS.JoinRelation joinType types) : trs) =
 convertRelation ((ITS.SubtypingRelation type1 type2) : trs) =
 	GTS.SubtypingRelation (convertType type1) (convertType type2)
 	: convertRelation trs
+convertRelation ((ITS.MemberRelation elem1 elem2) : trs) =
+	GTS.MemberRelation (head $ convertContext [elem1]) (head $ convertContext [elem2])
+	: convertRelation trs
 
 convertContext :: ITS.Context -> GTS.Context
 convertContext [] = []

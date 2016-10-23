@@ -50,6 +50,7 @@ data Structure = Structure Name [Argument]
 --				   | <predicate>
 data Argument = Atom Name
 			  | Variable Name
+			  | Bind Name Name
 			  | List (Name, Name) Name
 			  | Predicate Name [Argument]
 			  deriving (Show, Eq, Ord)
@@ -77,6 +78,13 @@ variableParser :: Parser Argument
 variableParser = do
 	name <- variable
 	return $ Variable name
+
+bindingParser :: Parser Argument
+bindingParser = do
+	name1 <- spaces *> (atom <|> variable)
+	char ':'
+	name2 <- spaces *> (atom <|> variable)
+	return $ Bind name1 name2
 
 -- parse a prolog list
 -- whose elements are bindings of variables and types
@@ -108,6 +116,7 @@ predicateParser = do
 -- a atom, list, atom or variable
 argumentsParser :: Parser Argument
 argumentsParser =
+	(try bindingParser) <|>
 	(try listParser) <|>
 	(try predicateParser) <|>
 	(try atomParser) <|>

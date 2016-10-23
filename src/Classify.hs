@@ -32,6 +32,8 @@ step12Premise (TypeAssignment ctx expr typ) =
 		(step12Expression expr Input Consumer)
 		-- type variables in type are normally considered output and producers
 		(step12Type typ Output Producer)
+-- do not classify variables in member relation
+step12Premise (MemberRelation elem1 elem2) = MemberRelation elem1 elem2
 
 -- classify conclusion, modes and positions are flipped
 step12Conclusion :: TypingRelation -> TypingRelation

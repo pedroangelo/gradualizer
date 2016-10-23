@@ -1,10 +1,12 @@
 module PrologParser (
 	Program (..),
-	--prologToTypeSystem
+	Clause (..),
+	Head (..),
+	Body (..),
+	Structure(..),
+	Argument(..),
+	parseProlog
 ) where
-
--- Type System
---import InitialTypeSystem
 
 -- Imports
 import Text.Parsec
@@ -13,14 +15,13 @@ import Text.ParserCombinators.Parsec.Char
 import Control.Applicative hiding((<|>), many, optional)
 
 -- TODO:
--- - read functions information (type annotations, etc) and pass using State Monad
--- - add more typing relations (toTypingRelation)
 
 -- Prolog Program is composed by clauses
 data Program = Program [Import] [Clause]
 	deriving (Show, Eq, Ord)
 
 type Import = String
+
 -- Clause is either a Fact or a Rule:
 --	- <clause> ::= <fact>
 --				 | <rule>
@@ -49,24 +50,20 @@ data Structure = Structure Name [Argument]
 --				   | <predicate>
 data Argument = Atom Name
 			  | Variable Name
-			  | List [Argument] Argument
-			  | Binding Argument Argument
+			  | List (Name, Name) Name
 			  | Predicate Name [Argument]
 			  deriving (Show, Eq, Ord)
 
 type Name = String
 
-{-
-prologToTypeSystem :: FilePath -> IO TypeSystem
-prologToTypeSystem file = do
-	signatures <- readFile ("Type Systems in Prolog/" ++ file ++ ".sig")
-	let function = lines signatures
+parseProlog :: FilePath -> IO Program
+parseProlog file = do
 	contents <- readFile ("Type Systems in Prolog/" ++ file ++ ".yap")
 	case parse programParser "" contents of
              { Left err -> error $ show err
-             ; Right prolog -> return $ toTypeSystem prolog function
+             ; Right prolog -> return prolog
              }
--}
+
 -- Parser Functions
 
 -- parse a atom (identifier starting with lower letter)
@@ -87,18 +84,13 @@ variableParser = do
 listParser :: Parser Argument
 listParser = do
 	char '['
-	elems <- (argumentsParser) `sepBy` (spaces *> comma <* spaces)
-	char '|'
-	tail_ <- spaces *> (argumentsParser) <* spaces
-	char ']'
-	return $ List elems tail_
-
-bindingParser :: Parser Argument
-bindingParser = do
-	elem1 <- argumentsParser
+	name1 <- spaces *> (atom <|> variable) <* spaces
 	char ':'
-	elem2 <- argumentsParser
-	return $ Binding elem1 elem2
+	name2 <- spaces *> (atom <|> variable) <* spaces
+	char '|'
+	name3 <- spaces *> (atom <|> variable) <* spaces
+	char ']'
+	return $ List (name1, name2) name3
 
 -- parse a predicate call inside the body or head of a clause
 -- <predicate> ::= <name>(<arguments>)
@@ -113,12 +105,11 @@ predicateParser = do
 	return $ Predicate name arguments
 
 -- a predicate call's argument can be:
--- a atom, list, atom, variable or a list item (X:T)
+-- a atom, list, atom or variable
 argumentsParser :: Parser Argument
 argumentsParser =
-	(try predicateParser) <|>
-	(try bindingParser) <|>
 	(try listParser) <|>
+	(try predicateParser) <|>
 	(try atomParser) <|>
 	(try variableParser) <?> "arguments"
 
@@ -205,69 +196,3 @@ comments :: Parser String
 comments = do
 	char '%'
 	manyTill anyChar newline
-
--- Convert from prolog to typesystem
-{-
-toTypeSystem :: Program -> [String] -> TypeSystem
-toTypeSystem (Program _ program) functions =
-	TypeSystem $ map (\x -> toTypeRule x functions) program
-
-toTypeRule :: Clause -> [String] -> TypeRule
-toTypeRule (Fact head_) functions =
-	TypeRule [] (toTypingRelation head_ functions)
-toTypeRule (Rule head_ body) functions =
-	TypeRule
-		(map (\x -> toTypingRelation x functions) body)
-		(toTypingRelation head_ functions)
-
-toTypingRelation :: Structure -> [String] -> TypingRelation
-toTypingRelation (Structure "type" arguments) functions = toTypeAssignment arguments functions
---toTypingRelation (Structure "member" arguments) functions = toMember arguments
--- add for more typing relations
-
---toMember :: [Argument] -> TypingRelation
---toMember ((ListItem var typ):ctx:_) =
---	MemberRelation (Binding var (toType typ)) (head $ toContext ctx)
-
-toTypeAssignment :: [Argument] -> [String] -> TypingRelation
-toTypeAssignment (context:expression:type_:[]) functions =
-	TypeAssignment (toContext context) (toExpression expression functions) (toType type_)
-
-toContext :: Argument -> Context
-toContext (Atom name) = undefined
-toContext (Variable "Context") = [Context "Γ"]
-toContext (Variable name) = undefined
-toContext (List elems tail_) =
-	[Context "Γ", Binding var (VarType type_ "" NullMode NullPosition)]
-toContext (List (var, type_) tail_) =
-	[Context tail_, Binding var (VarType type_ "" NullMode NullPosition)]
-toContext (Predicate name args) = undefined
-
-toExpression :: Argument -> [String] -> Expression
-toExpression (Atom name) _ = Function name Nothing []
-toExpression (Variable name) _ = Var name
-toExpression (List (var, type_) tail_) _ = undefined
-toExpression (Predicate "var" ((Variable name):[])) _ = Var name
-toExpression (Predicate "abs" ((Variable var) : expr : [])) functions =
-	Abstraction var (toExpression expr functions)
-toExpression (Predicate "app" (expr1:expr2:[])) functions =
-	Application (toExpression expr1 functions) (toExpression expr2 functions)
-toExpression (Predicate name args) functions
-	| elem name functions =
-		let
-			typeAnnotation = head args
-			args' = tail args
-		in Function name (Just $ toType typeAnnotation) (map (\x -> toExpression x functions) args')
-	| otherwise = Function name Nothing (map (\x -> toExpression x functions) args)
-
-toType :: Argument -> Type
-toType (Atom name) = BaseType name NullMode NullPosition
-toType (Variable name) = VarType name "" NullMode NullPosition
-toType (List (var, type_) tail_) = undefined
-toType (Predicate "arrow" (type1:type2:[])) = ArrowType (toType type1) (toType type2)
-toType (Predicate "list" (type_:[])) = ListType (toType type_)
-toType (Predicate "pairType" (type1:type2:[])) = PairType (toType type1) (toType type2)
-toType (Predicate "refType" (type_:[])) = RefType (toType type_)
-toType (Predicate "sumType" (type1:type2:[])) = SumType (toType type1) (toType type2)
-toType (Predicate name args) = TypeConstructor name (map toType args)
--}

@@ -15,19 +15,22 @@ type Premises = [TypingRelation]
 type Conclusion = TypingRelation
 
 -- Typing relation can be:
--- 		Type Assignment: (Context, Expression, Type)
-data TypingRelation = TypeAssignment Context Expression Type
-					-- Pattern Matching: Type ▷ Type
-					| MatchingRelation Type Type
-					-- Consistency Relation : Type ~ Type
-					| ConsistencyRelation Type Type
-					-- Static Relation: static(Type)
-					| StaticRelation Type
-					-- Join Relation: Type = ⊔ [Type]
-					| JoinRelation Type [Type]
-					-- Subtyping Relation: Type <: Type
-					| SubtypingRelation Type Type
-					deriving (Show, Eq, Ord)
+data TypingRelation
+	-- Type Assignment: (Context, Expression, Type)
+	= TypeAssignment Context Expression Type
+	-- Pattern Matching: Type ▷ Type
+	| MatchingRelation Type Type
+	-- Consistency Relation : Type ~ Type
+	| ConsistencyRelation Type Type
+	-- Static Relation: static(Type)
+	| StaticRelation Type
+	-- Join Relation: Type = ⊔ [Type]
+	| JoinRelation Type [Type]
+	-- Subtyping Relation: Type <: Type
+	| SubtypingRelation Type Type
+	-- Member Relation: (Name:Type) ∈ Context
+	| MemberRelation Bindings Bindings
+	deriving (Show, Eq, Ord)
 
 -- Context holds bindings between variables and types
 type Context = [Bindings]
@@ -67,6 +70,10 @@ printContext [] = ""
 printContext ((Context var): ctx) = var ++ "" ++ printContext ctx
 printContext ((Binding var typ): ctx) = ", " ++ var ++ " : " ++ printType typ ++ printContext ctx
 
+printBindings :: Bindings -> String
+printBindings(Context var) = var
+printBindings (Binding var typ) = var ++ " : " ++ printType typ
+
 printType :: Type -> String
 printType (BaseType basetype) = basetype
 printType (VarType name) = name
@@ -89,13 +96,16 @@ printExpression (Function ctr annotation exps) = ctr ++
 
 printRelation :: TypingRelation -> String
 printRelation (TypeAssignment ctx expr typ) =
-	printContext ctx ++ " ⊢G " ++ printExpression expr ++ " : " ++ printType typ
+	--printContext ctx ++ " ⊢G " ++ printExpression expr ++ " : " ++ printType typ
+	(concat $ intersperse ", " $ map printBindings ctx)
+	++ " ⊢ " ++ printExpression expr ++ " : " ++ printType typ
 printRelation (MatchingRelation type1 type2) = printType type1 ++ " ▷ " ++ printType type2
 printRelation (ConsistencyRelation type1 type2) = printType type1 ++ " ~ " ++ printType type2
 printRelation (StaticRelation type1) = "static(" ++ printType type1 ++ ")"
 printRelation (JoinRelation typeJ types) =
 	printType typeJ ++ " = " ++ concat (intersperse " ⊔ " (map printType types))
 printRelation (SubtypingRelation type1 type2) = printType type1 ++ " <: " ++ printType type2
+printRelation (MemberRelation element set) = printBindings element ++ " ∈ " ++ printBindings set
 
 printRule :: TypeRule -> String
 printRule (TypeRule premise conclusion) =
