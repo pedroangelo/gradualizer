@@ -7,8 +7,9 @@ module Gradualizer (
 import InitialTypeSystem as ITS
 import GradualTypeSystem as GTS
 
--- Prolog Parser
+-- Parsers
 import PrologParser
+import SignatureParser
 
 -- Gradulizer Steps
 import Classify
@@ -25,11 +26,16 @@ import Data.Maybe
 -- then gradualize
 readSystem :: FilePath -> IO GTS.TypeSystem
 readSystem file = do
-	signatures <- readFile ("Type Systems in Prolog/" ++ file ++ ".sig")
-	let functions = lines signatures
+	-- parse prolog to Program format
 	prolog <- parseProlog file
-	let ts = ITS.toTypeSystem prolog functions
-	return $ gradualize ts
+	-- parse signatures to Signatures format
+	signatures <- parseSignatures file
+	-- get type annotated terms
+	let typeAnnotatedTerms = deriveTypeAnnotations signatures
+	-- convert Program format to Initial Type System using annotated terms information
+	let ts = ITS.toTypeSystem prolog typeAnnotatedTerms
+	-- gradualize typesystem
+	return $ gradualize signatures ts
 
 -- gradualize type system by applying 6 steps:
 -- - Step 1: Classify type variables with input or output modes
@@ -38,11 +44,14 @@ readSystem file = do
 -- - Step 4: Flow and final type discovery
 -- - Step 5: Restrict lone inputs to be static
 -- - Step 6: Replace flow with consistency
+-- - Add pattern matching rules
 -- - Final: Remove mode and position from type variables and flow relation from typing relation
-gradualize :: ITS.TypeSystem -> GTS.TypeSystem
-gradualize =
+gradualize :: Signatures -> ITS.TypeSystem -> GTS.TypeSystem
+gradualize signatures =
 	-- final
 	convertTypeSystem .
+	-- add pattern match rules
+	addPatternMatchRules signatures .
 	-- step 6
 	removeFlowsInsertConsistency .
 	-- step 5
@@ -53,6 +62,55 @@ gradualize =
 	applyPatternMatching .
 	-- step 1 and 2
 	classifyTypeVariables
+
+-- PATTERN MATCH
+
+-- add pattern matching rules to type system according to signatures
+addPatternMatchRules :: Signatures -> ITS.TypeSystem -> ITS.TypeSystem
+addPatternMatchRules (Signatures signatures) (ITS.TypeSystem typeRules) =
+	-- first derive pattern matching rules for each type
+	let patternMatchRules = concat $ map addPatternMatchRelation signatures
+	-- add to type system
+	in ITS.TypeSystem (typeRules ++ patternMatchRules)
+
+-- Derive pattern matching rules for a given signatures
+addPatternMatchRelation :: Signature -> [ITS.TypeRule]
+addPatternMatchRelation (Signature name kind args)
+	-- if signature corresponds to a Type
+	| kind == "Type" =
+		let
+			-- build type with new variables
+			typ = buildType name (length args)
+			-- build type with dynamic type
+			typDyn = buildTypeDyn name (length args)
+			-- build pattern match rule for dynamic type
+			dynRelation = ITS.TypeRule [] (ITS.MatchingRelation ITS.DynType typDyn)
+			-- build pattern match rule for variable types
+			typRelation = ITS.TypeRule [] (ITS.MatchingRelation typ typ)
+		in [typRelation, dynRelation]
+	| otherwise = []
+
+-- build type, if is constructed instantiate with type variables
+buildType :: String -> Int -> ITS.Type
+buildType name 0 = ITS.BaseType name ITS.NullMode ITS.NullPosition
+buildType "arrow" 2 = ITS.ArrowType (newVar "T1" "") (newVar "T2" "")
+buildType "list" 1 = ITS.ListType (newVar "T" "")
+buildType "pairType" 2 = ITS.PairType (newVar "T1" "") (newVar "T2" "")
+buildType "refType" 1 = ITS.RefType (newVar "T" "")
+buildType "sumType" 2 = ITS.SumType (newVar "T1" "") (newVar "T2" "")
+buildType name numArgs = ITS.TypeConstructor name args
+	where args = map (\x -> newVar ("T" ++ x) "") (map show [1..numArgs])
+
+-- build type, if is constructed instantiate with dynamic type
+buildTypeDyn :: String -> Int -> ITS.Type
+buildTypeDyn name 0 = ITS.BaseType name ITS.NullMode ITS.NullPosition
+buildTypeDyn "arrow" 2 = ITS.ArrowType ITS.DynType ITS.DynType
+buildTypeDyn "list" 1 = ITS.ListType ITS.DynType
+buildTypeDyn "pairType" 2 = ITS.PairType ITS.DynType ITS.DynType
+buildTypeDyn "refType" 1 = ITS.RefType ITS.DynType
+buildTypeDyn "sumType" 2 = ITS.SumType ITS.DynType ITS.DynType
+buildTypeDyn name numArgs = ITS.TypeConstructor name args
+	where args = replicate numArgs (ITS.DynType)
 
 -- CONVERTION TO GRADUAL TYPE SYSTEM
 

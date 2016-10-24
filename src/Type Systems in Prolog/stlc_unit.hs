@@ -1,0 +1,2 @@
+unit :: Term
+unitType :: Type

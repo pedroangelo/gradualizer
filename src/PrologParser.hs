@@ -169,15 +169,15 @@ importParser = do
 programWithImportsParser :: Parser Program
 programWithImportsParser = do
 	optional commentsParser
-	imports <- many (char '\n') *> importParser <* many (char '\n')
-	clauses <- clauseParser `sepBy` many (char '\n') <* many (char '\n')
+	imports <- many newline *> importParser <* many newline
+	clauses <- clauseParser `sepBy` many newline <* many newline
 	return $ Program imports clauses
 
 -- parse program without import statement
 programWithoutImportsParser :: Parser Program
 programWithoutImportsParser = do
 	optional commentsParser
-	clauses <- clauseParser `sepBy` many (char '\n') <* many (char '\n')
+	clauses <- clauseParser `sepBy` many newline <* many newline
 	return $ Program [] clauses
 
 -- parse a prolog program
@@ -187,7 +187,7 @@ programParser = try programWithImportsParser <|> programWithoutImportsParser
 -- parse comments line, ignoring the contents of the comments
 commentsParser :: Parser ()
 commentsParser = do
-	(many comments) `sepBy` (char '\n') <* many (char '\n')
+	(many comments) `sepBy` newline <* many newline
 	return ()
 
 -- SIMPLE PARSERS

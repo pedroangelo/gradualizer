@@ -83,7 +83,7 @@ printType (ListType type1) = "list " ++ printType type1
 printType (PairType type1 type2) = "pairType " ++ printType type1 ++ " " ++ printType type2
 printType (RefType type1) = "refType " ++ printType type1
 printType (SumType type1 type2) = "sumType " ++ printType type1 ++ " " ++ printType type2
-printType (TypeConstructor tc typ) = tc ++ "[" ++ (concat $ intersperse ", " (map printType typ)) ++ "]"
+printType (TypeConstructor tc typ) = tc ++ " " ++ (concat $ intersperse " " (map printType typ))
 
 printExpression :: Expression -> String
 printExpression (Var var) = var
