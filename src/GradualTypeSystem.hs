@@ -34,34 +34,36 @@ data TypingRelation
 
 -- Context holds bindings between variables and types
 type Context = [Bindings]
-data Bindings = Context String
-			  | Binding String Type
-			 deriving (Show, Eq, Ord)
+data Bindings
+	= Context String
+	| Binding String Type
+	deriving (Show, Eq, Ord)
 
 -- Type annotations that may appear in expressions
 type TypeAnnotation = Maybe Type
 
 -- Expressions that can be formed in λ-calculus
-data Expression = Var String
-				| Abstraction String Expression
-				| Application Expression Expression
-				-- built in function
-				| Function String TypeAnnotation [Expression]
-				deriving (Show, Eq, Ord)
+data Expression
+	= Var String
+	| Abstraction String Expression
+	| Application Expression Expression
+	| Function String TypeAnnotation [Expression]
+	deriving (Show, Eq, Ord)
 
 type Name = String
 
 -- Types
-data Type = BaseType Name
-		  | VarType Name
-		  | DynType
-		  | ArrowType Type Type
-		  | ListType Type
-		  | PairType Type Type
-		  | RefType Type
-		  | SumType Type Type
-		  | TypeConstructor Name [Type]
-		  deriving (Show, Eq, Ord)
+data Type
+	= BaseType Name
+	| VarType Name
+	| DynType
+	| ArrowType Type Type
+	| ListType Type
+	| PairType Type Type
+	| RefType Type
+	| SumType Type Type
+	| TypeConstructor Name [Type]
+	deriving (Show, Eq, Ord)
 
 -- PRINTING
 

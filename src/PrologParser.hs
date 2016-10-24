@@ -22,38 +22,27 @@ data Program = Program [Import] [Clause]
 
 type Import = String
 
--- Clause is either a Fact or a Rule:
---	- <clause> ::= <fact>
---				 | <rule>
--- <fact> ::= <head>.
--- <rule> ::= <head> :- <body>.
--- <body> ::= <structure>
---			| <structure>, <structures>
-data Clause = Fact Head
-			| Rule Head Body
-		   deriving (Show, Eq, Ord)
+-- Clause is either a Fact or a Rule
+data Clause
+	= Fact Head
+	| Rule Head Body
+	deriving (Show, Eq, Ord)
 
 type Head = Structure
 type Body = [Structure]
 
 -- Structure is a predicate call or predicate definition:
---	- <structure> ::= <name>
---					| <name> (<arguments>)
--- <arguments> ::= <argument>
---				 | <argument> , <arguments>
 data Structure = Structure Name [Argument]
 	deriving (Show, Eq, Ord)
 
--- Argument is:
---	- <argument> ::= <name>
---				   | <list>
---				   | <predicate>
-data Argument = Atom Name
-			  | Variable Name
-			  | Bind Name Name
-			  | List (Name, Name) Name
-			  | Predicate Name [Argument]
-			  deriving (Show, Eq, Ord)
+-- Argument is a expression inside a structure
+data Argument
+	= Atom Name
+	| Variable Name
+	| Bind Name Name
+	| List (Name, Name) Name
+	| Predicate Name [Argument]
+	deriving (Show, Eq, Ord)
 
 type Name = String
 
