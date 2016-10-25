@@ -52,7 +52,7 @@ step5Context (Binding _ typ) = step5Type typ
 
 -- collect input only type variables in expression
 step5Expression :: Expression -> State VariableCollection ()
-step5Expression (Var name) = return ()
+step5Expression (Var name cast) = return ()
 step5Expression (Abstraction var expr) = do
 	step5Expression expr
 step5Expression (Application expr1 expr2) = do

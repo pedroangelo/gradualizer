@@ -50,11 +50,14 @@ type TypeAnnotation = Maybe Type
 
 -- Expressions that can be formed in λ-calculus
 data Expression
-	= Var String
+	= Var String Cast
 	| Abstraction String Expression
 	| Application Expression Expression
 	| Function String TypeAnnotation [Expression]
+	| Compilation Expression Expression
 	deriving (Show, Eq, Ord)
+
+type Cast = Maybe (Type, Type)
 
 type Name = String
 type Identifier = String
@@ -119,13 +122,21 @@ printPosition Producer = "P"
 printPosition Consumer = "C"
 
 printExpression :: Expression -> String
-printExpression (Var var) = var
+printExpression (Var var cast)
+	| cast == Nothing = var
+	| otherwise = "(" ++ var ++ printCast cast ++ ")"
 printExpression (Abstraction var expr) =
 	"(λ" ++ var ++ " . " ++ (printExpression expr) ++ ")"
 printExpression (Application expr1 expr2) = printExpression expr1 ++ " " ++ printExpression expr2
 printExpression (Function name annotation exps) = name ++
 	(if isJust annotation then "[" ++ printType (fromJust annotation) ++ "]" else "" ) ++ " " ++
 	(concat $ intersperse " " $ map printExpression exps)
+printExpression (Compilation expr1 expr2) =
+	"(" ++ printExpression expr1 ++ ") ⇝ (" ++ printExpression expr2 ++ ")"
+
+printCast :: Cast -> String
+printCast (Nothing) = ""
+printCast (Just (type1, type2)) = " : " ++ printType type1 ++ " => " ++ printType type2
 
 printRelation :: TypingRelation -> String
 printRelation (TypeAssignment ctx expr typ) =
@@ -193,9 +204,9 @@ toContext (Predicate name args) = undefined
 
 toExpression :: Argument -> [String] -> Expression
 toExpression (Atom name) _ = Function name Nothing []
-toExpression (Variable name) _ = Var name
+toExpression (Variable name) _ = Var name Nothing
 toExpression (List (var, type_) tail_) _ = undefined
-toExpression (Predicate "var" ((Variable name):[])) _ = Var name
+toExpression (Predicate "var" ((Variable name):[])) _ = Var name Nothing
 toExpression (Predicate "abs" ((Variable var) : expr : [])) functions =
 	Abstraction var (toExpression expr functions)
 toExpression (Predicate "app" (expr1:expr2:[])) functions =
@@ -304,6 +315,7 @@ isEqualType (SumType type1a type1b) (SumType type2a type2b) =
 	isEqualType type1a type2a && isEqualType type1b type2b
 isEqualType (TypeConstructor name1 types1) (TypeConstructor name2 types2) =
 	name1 == name2 && (all (== True) (zipWith (==) types1 types2))
+isEqualType _ _ = False
 
 -- remove mode and position tags from types
 removeModePosition :: Type -> Type

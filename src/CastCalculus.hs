@@ -1,4 +1,4 @@
-module GradualTypeSystem where
+module CastCalculus where
 
 import Data.List
 import Data.Maybe
@@ -46,11 +46,14 @@ type TypeAnnotation = Maybe Type
 
 -- Expressions that can be formed in λ-calculus
 data Expression
-	= Var String
+	= Var String Cast
 	| Abstraction String Expression
 	| Application Expression Expression
 	| Function String TypeAnnotation [Expression]
+	| Compilation Expression Expression
 	deriving (Show, Eq, Ord)
+
+type Cast = Maybe (Type, Type)
 
 type Name = String
 
@@ -90,19 +93,27 @@ printType (SumType type1 type2) = "sumType " ++ printType type1 ++ " " ++ printT
 printType (TypeConstructor tc typ) = tc ++ " " ++ (concat $ intersperse " " (map printType typ))
 
 printExpression :: Expression -> String
-printExpression (Var var) = var
+printExpression (Var var cast)
+	| cast == Nothing = var
+	| otherwise = "(" ++ var ++ printCast cast ++ ")"
 printExpression (Abstraction var e) =
 	"(λ" ++ var ++ " . " ++ (printExpression e) ++ ")"
 printExpression (Application e1 e2) = printExpression e1 ++ " " ++ printExpression e2
 printExpression (Function ctr annotation exps) = ctr ++
 	(if isJust annotation then "[" ++ printType (fromJust annotation) ++ "]" else "" ) ++ " " ++
 	(concat $ intersperse " " $ map printExpression exps)
+printExpression (Compilation expr1 expr2) =
+	printExpression expr1 ++ " ⇝ " ++ printExpression expr2
+
+printCast :: Cast -> String
+printCast (Nothing) = ""
+printCast (Just (type1, type2)) = " : " ++ printType type1 ++ " => " ++ printType type2
 
 printRelation :: TypingRelation -> String
 printRelation (TypeAssignment ctx expr typ) =
 	--printContext ctx ++ " ⊢G " ++ printExpression expr ++ " : " ++ printType typ
 	(concat $ intersperse ", " $ map printBindings ctx)
-	++ " ⊢ " ++ printExpression expr ++ " : " ++ printType typ
+	++ " ⊢CC " ++ printExpression expr ++ " : " ++ printType typ
 printRelation (MatchingRelation type1 type2) = printType type1 ++ " ▷ " ++ printType type2
 printRelation (ConsistencyRelation type1 type2) = printType type1 ++ " ~ " ++ printType type2
 printRelation (StaticRelation type1) = "static(" ++ printType type1 ++ ")"
@@ -121,7 +132,7 @@ printSystem' (TypeSystem ts) = concat $ intersperse "\n\n" $ map printRule ts
 
 printSystem ts = putStrLn $ printSystem' ts
 
--- CONVERTION TO GRADUAL TYPE SYSTEM
+-- CONVERTION TO CAST CALCULUS TYPE SYSTEM
 
 convertTypeSystem :: ITS.TypeSystem -> TypeSystem
 convertTypeSystem (ITS.TypeSystem ts) = TypeSystem $ map convertTypeRule ts
@@ -163,7 +174,7 @@ convertContext ((ITS.Binding var typ) : ctx) =
 	Binding var (convertType typ) : convertContext ctx
 
 convertExpression :: ITS.Expression -> Expression
-convertExpression (ITS.Var var cast) = Var var
+convertExpression (ITS.Var var cast) = Var var (convertCast cast)
 convertExpression (ITS.Abstraction var expr) =
 	Abstraction var (convertExpression expr)
 convertExpression (ITS.Application expr1 expr2) =
@@ -172,6 +183,12 @@ convertExpression (ITS.Function name annotation exprs) =
 	Function name (if isJust annotation
 		then (Just $ convertType $ fromJust annotation)
 		else Nothing) (map convertExpression exprs)
+convertExpression (ITS.Compilation expr1 expr2) =
+	Compilation (convertExpression expr1) (convertExpression expr2)
+
+convertCast :: ITS.Cast -> Cast
+convertCast (Nothing) = Nothing
+convertCast (Just (type1, type2)) = Just (convertType type1, convertType type2)
 
 convertType :: ITS.Type -> Type
 convertType (ITS.BaseType basetype mode position) =

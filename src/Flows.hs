@@ -84,7 +84,7 @@ step4_1Context (Binding _ typ) = step4_1Type typ
 
 -- collect repeating type variables in expression
 step4_1Expression :: Expression -> State VariableCollection ()
-step4_1Expression (Var name) = return ()
+step4_1Expression (Var name cast) = return ()
 step4_1Expression (Abstraction var expr) = do
 	step4_1Expression expr
 step4_1Expression (Application expr1 expr2) = do
@@ -178,7 +178,7 @@ step4_2Context (Binding var typ) = do
 
 -- apply step 4.2 to expression
 step4_2Expression :: Expression -> State VariableInfo Expression
-step4_2Expression (Var name) = return (Var name)
+step4_2Expression (Var name cast) = return (Var name cast)
 step4_2Expression (Abstraction var expr) = do
 	expr' <- step4_2Expression expr
 	return (Abstraction var expr')
@@ -312,7 +312,7 @@ step4_4Context (Binding var typ) targetVar finalType =
 
 -- apply step 4.4 to expression
 step4_4Expression :: Expression -> String -> Type -> Expression
-step4_4Expression (Var name) _ _ = Var name
+step4_4Expression (Var name cast) _ _ = Var name cast
 step4_4Expression (Abstraction var expr) targetVar finalType =
 	(Abstraction var expr')
 	where expr' = step4_4Expression expr targetVar finalType

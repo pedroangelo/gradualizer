@@ -53,7 +53,7 @@ step12Bindings (Binding name typ) mode position = Binding name $ step12Type typ 
 
 -- change mode and position for type variables in expression
 step12Expression :: Expression -> Mode -> Position -> Expression
-step12Expression (Var var) _ _ = Var var
+step12Expression (Var var cast) _ _ = Var var cast
 step12Expression (Abstraction var expression) mode position =
 	Abstraction var (step12Expression expression mode position)
 step12Expression (Application expr1 expr2) mode position =
