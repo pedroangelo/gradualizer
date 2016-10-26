@@ -1,6 +1,6 @@
 module Gradualizer (
-	toGradual,
-	toCastCalculusCompiler,
+	generateGradual,
+	generateCompiler,
 	gradualize,
 	compilerToCC
 ) where
@@ -29,8 +29,8 @@ import Data.Maybe
 -- read type system from prolog file,
 -- parse contents and convert to TypeSystem,
 -- then gradualize
-toGradual :: FilePath -> IO GTS.TypeSystem
-toGradual file = do
+generateGradual :: FilePath -> IO GTS.TypeSystem
+generateGradual file = do
 	-- parse prolog to Program format
 	prolog <- parseProlog file
 	-- parse signatures to Signatures format
@@ -71,8 +71,8 @@ gradualize signatures =
 -- read type system from prolog file,
 -- parse contents and convert to TypeSystem,
 -- then generate compiler to cast calculus
-toCastCalculusCompiler :: FilePath -> IO CC.TypeSystem
-toCastCalculusCompiler file = do
+generateCompiler :: FilePath -> IO CC.TypeSystem
+generateCompiler file = do
 	-- parse prolog to Program format
 	prolog <- parseProlog file
 	-- parse signatures to Signatures format
@@ -92,14 +92,11 @@ toCastCalculusCompiler file = do
 -- - Step 5: Restrict lone inputs to be static
 -- - Step 7: Generate casts as directed by the flow premises
 -- - Step 6: Replace flow with consistency
--- - Step PM: Add pattern matching rules
 -- - Step Final: Remove mode and position from type variables and flow relation from typing relation
 compilerToCC :: Signatures -> ITS.TypeSystem -> CC.TypeSystem
 compilerToCC signatures =
 	-- step Final
 	CC.convertTypeSystem .
-	-- step PM
-	addPatternMatchRules signatures .
 	-- step 6
 	removeFlowsInsertConsistency .
 	-- step 7

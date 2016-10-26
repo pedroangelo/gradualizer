@@ -1,3 +1,3 @@
-abs :: Type -> (Term -> Term) -> Term
+abs :: Term -> Term -> Term
 app :: Term -> Term -> Term
 arrow :: Type -> Type -> Type
